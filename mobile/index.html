@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-  <!-- PWA Manifest & Theme -->
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#000000">
-
-<!-- iOS Safari PWA Meta Tags -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="WebApp">
-<link rel="apple-touch-icon" href="/icon-192.png">
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0d0d0f" id="meta-theme-color"/>
+<meta name="description" content="MyWeb Chat — a fast, private messaging app"/>
 <title>MyWeb Chat</title>
+
+<!-- PWA Manifest (inline via data URI) -->
+<link rel="manifest" id="pwa-manifest"/>
+
+<!-- Apple Touch Icons (SVG inline via data URI — set below in script) -->
+<link rel="apple-touch-icon" id="apple-touch-icon"/>
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/appwrite@16.0.2/dist/iife/sdk.min.js"></script>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -71,18 +72,55 @@ body {
   height: 100vh;
   height: 100dvh;
   overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
+/* Allow text selection in messages */
+.msg-txt, .notif-text { -webkit-user-select: text; user-select: text; }
 ::-webkit-scrollbar { width: 0; }
+
+/* ══ INSTALL BANNER ══════════════════════════════════════ */
+#install-banner {
+  position: fixed; bottom: calc(var(--tab-h) + var(--safe-bottom) + 10px);
+  left: 14px; right: 14px; z-index: 9997;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--r2); padding: 12px 14px;
+  display: none; align-items: center; gap: 12px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.45);
+  animation: tin .2s ease;
+}
+#install-banner.show { display: flex; }
+
+/* ══ SPLASH / LOADING ════════════════════════════════════ */
+#splash {
+  position: fixed; inset: 0; z-index: 2000;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+#splash.hidden { display: none; }
+.splash-logo {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 24px; color: #fff;
+  box-shadow: 0 8px 32px rgba(91,108,249,.35);
+}
+.splash-name { font-weight: 800; font-size: 1.4rem; letter-spacing: -.5px; }
+.splash-sub { font-size: .82rem; color: var(--muted); }
 
 /* ══ AUTH ════════════════════════════════════════════════ */
 #auth-screen {
   position: fixed; inset: 0; z-index: 1000;
   background: var(--bg);
-  display: flex; flex-direction: column;
+  display: none; flex-direction: column;
   align-items: center; justify-content: center;
   padding: 24px;
   padding-top: calc(24px + var(--safe-top));
 }
+#auth-screen.show { display: flex; }
 .auth-logo {
   display: flex; flex-direction: column; align-items: center;
   gap: 12px; margin-bottom: 36px;
@@ -131,6 +169,7 @@ body {
   font-size: .95rem; border-radius: var(--r); outline: none;
   transition: border-color .15s;
   -webkit-appearance: none;
+  -webkit-user-select: text; user-select: text;
 }
 .field input:focus { border-color: var(--accent); }
 .field input::placeholder { color: var(--dim); }
@@ -151,7 +190,6 @@ body {
   border-radius: var(--r); font-size: .85rem;
   margin-bottom: 14px; display: none;
 }
-#server-url-input { display: none; }
 
 /* ══ APP SHELL ═══════════════════════════════════════════ */
 #app {
@@ -159,8 +197,9 @@ body {
   width: 100%; height: 100vh; height: 100dvh;
   position: relative; overflow: hidden;
 }
+#app.show { display: block; }
 
-/* ══ SIDEBAR (slide-in) ══════════════════════════════════ */
+/* ══ SIDEBAR ═════════════════════════════════════════════ */
 #sidebar-backdrop {
   position: fixed; inset: 0; z-index: 80;
   background: rgba(0,0,0,.55);
@@ -213,6 +252,7 @@ body {
   background: var(--surface2); border: 1px solid var(--border);
   color: var(--text); font-family: 'Inter', sans-serif;
   font-size: .85rem; border-radius: 10px; outline: none;
+  -webkit-user-select: text; user-select: text;
 }
 .sb-search input::placeholder { color: var(--dim); }
 
@@ -266,7 +306,6 @@ body {
   text-align: center;
 }
 
-/* Sidebar footer */
 .sb-footer {
   border-top: 1px solid var(--border);
   padding: 10px 12px;
@@ -288,7 +327,7 @@ body {
 }
 .sb-footer-tag { font-size: .72rem; color: var(--muted); }
 
-/* Tab bar (bottom nav) */
+/* Tab bar */
 .tab-bar {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
   background: var(--surface);
@@ -327,7 +366,6 @@ body {
 }
 .view.active { display: flex; }
 
-/* Top bar */
 .topbar {
   height: var(--topbar-h); flex-shrink: 0;
   display: flex; align-items: center;
@@ -352,14 +390,10 @@ body {
 }
 
 /* ══ CHAT VIEW ═══════════════════════════════════════════ */
-#view-chat {
-  background: var(--bg);
-  padding-top: 0;
-}
+#view-chat { background: var(--bg); padding-top: 0; }
 
-/* Chat header */
 .chat-hd {
-  height: var(--topbar-h); flex-shrink: 0;
+  flex-shrink: 0;
   display: flex; align-items: center;
   padding: 0 10px 0 6px; gap: 8px;
   background: var(--surface);
@@ -445,8 +479,8 @@ body {
   flex: 1; background: transparent; border: none;
   color: var(--text); font-family: 'Inter', sans-serif;
   font-size: .95rem; resize: none; outline: none;
-  max-height: 120px; line-height: 1.45;
-  padding: 0;
+  max-height: 120px; line-height: 1.45; padding: 0;
+  -webkit-user-select: text; user-select: text;
 }
 #msg-input::placeholder { color: var(--dim); }
 .send-btn {
@@ -518,6 +552,7 @@ body {
   flex: 1; background: transparent; border: none;
   color: var(--text); font-family: 'Inter', sans-serif;
   font-size: .9rem; outline: none;
+  -webkit-user-select: text; user-select: text;
 }
 .add-friend-row input::placeholder { color: var(--dim); }
 .add-result { font-size: .82rem; color: var(--muted); margin-top: 8px; padding: 0 2px; }
@@ -529,22 +564,26 @@ body {
 }
 .divider { height: 1px; background: var(--border); margin: 4px 14px; }
 
-/* ══ NOTIFICATIONS VIEW ═══════════════════════════════════ */
+/* ══ NOTIFICATIONS ═══════════════════════════════════════ */
 .notifs-body { flex: 1; overflow-y: auto; }
 .notif-item {
   display: flex; align-items: flex-start; gap: 11px;
   padding: 13px 14px; transition: background .1s; cursor: pointer;
+  border-bottom: 1px solid var(--border);
 }
+.notif-item:last-child { border-bottom: none; }
 .notif-item:active { background: var(--surface2); }
 .notif-item.unread { background: var(--accent-s); }
+.notif-icon { font-size: 20px; flex-shrink: 0; }
 .notif-dot {
   width: 8px; height: 8px; border-radius: 50%;
-  background: var(--accent); flex-shrink: 0; margin-top: 5px;
+  background: var(--accent); flex-shrink: 0; margin-top: 6px;
 }
-.notif-text { font-size: .88rem; flex: 1; line-height: 1.4; }
-.notif-time { font-size: .7rem; color: var(--dim); white-space: nowrap; padding-top: 2px; }
+.notif-content { flex: 1; min-width: 0; }
+.notif-text { font-size: .88rem; line-height: 1.4; }
+.notif-time { font-size: .72rem; color: var(--dim); margin-top: 3px; }
 
-/* ══ PROFILE VIEW ════════════════════════════════════════ */
+/* ══ PROFILE ═════════════════════════════════════════════ */
 .profile-body { flex: 1; overflow-y: auto; }
 .profile-hero {
   display: flex; flex-direction: column; align-items: center;
@@ -561,14 +600,6 @@ body {
   box-shadow: 0 6px 24px rgba(91,108,249,.3);
 }
 .profile-av-big img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.profile-av-big::after {
-  content: '📷'; position: absolute; inset: 0;
-  background: rgba(0,0,0,.45);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 26px; border-radius: 50%;
-  opacity: 0; transition: opacity .15s;
-}
-.profile-av-big:active::after { opacity: 1; }
 .profile-name { font-size: 1.15rem; font-weight: 800; letter-spacing: -.3px; }
 .profile-tag { font-size: .85rem; color: var(--muted); }
 
@@ -596,6 +627,7 @@ body {
   flex: 1; background: transparent; border: none;
   color: var(--text); font-family: 'Inter', sans-serif;
   font-size: .9rem; outline: none; text-align: right;
+  -webkit-user-select: text; user-select: text;
 }
 .settings-row input::placeholder { color: var(--dim); }
 .settings-row-btn {
@@ -608,7 +640,7 @@ body {
 .settings-row-btn:active { background: var(--accent); color: #fff; }
 .settings-row-danger { color: var(--red); font-size: .9rem; font-weight: 600; }
 
-/* ══ PANELS (bottom sheets) ══════════════════════════════ */
+/* ══ SHEETS ══════════════════════════════════════════════ */
 .sheet-backdrop {
   position: fixed; inset: 0; z-index: 200;
   background: rgba(0,0,0,.55);
@@ -667,7 +699,6 @@ body {
 .sheet-tab { display: none; }
 .sheet-tab.on { display: block; }
 
-/* New convo sheet options */
 .new-opt {
   display: flex; align-items: center; gap: 13px;
   padding: 13px 4px; cursor: pointer;
@@ -682,14 +713,12 @@ body {
 .new-opt-label { font-size: .92rem; font-weight: 600; }
 .new-opt-sub { font-size: .78rem; color: var(--muted); }
 
-/* Friend rows in new DM sheet */
 .dm-friend-row {
   display: flex; align-items: center; gap: 11px;
   padding: 10px 4px; cursor: pointer;
 }
 .dm-friend-row:active { background: var(--surface2); border-radius: var(--r); }
 
-/* Group creation */
 .grp-name-row {
   background: var(--surface2); border: 1.5px solid var(--border);
   border-radius: var(--r2); padding: 12px 14px;
@@ -699,6 +728,7 @@ body {
   width: 100%; background: transparent; border: none;
   color: var(--text); font-family: 'Inter', sans-serif;
   font-size: .95rem; outline: none;
+  -webkit-user-select: text; user-select: text;
 }
 .grp-name-row input::placeholder { color: var(--dim); }
 .grp-members-grid {
@@ -720,7 +750,7 @@ body {
 .grp-member-chip-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .grp-member-chip-name { font-size: .82rem; font-weight: 500; }
 
-/* Call overlay */
+/* ══ CALL OVERLAY ════════════════════════════════════════ */
 #call-overlay {
   position: fixed; inset: 0; z-index: 500;
   background: rgba(0,0,0,.88);
@@ -822,7 +852,6 @@ body {
 .toast.w .toast-dot { background: var(--yellow); }
 @keyframes tin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-/* Manage sheet rows */
 .manage-member-row {
   display: flex; align-items: center; gap: 11px;
   padding: 10px 4px;
@@ -834,7 +863,12 @@ body {
 </head>
 <body>
 
-<!-- Connection bar -->
+<div id="splash">
+  <div class="splash-logo">MW</div>
+  <div class="splash-name">MyWeb Chat</div>
+  <div class="splash-sub">Loading…</div>
+</div>
+
 <div class="conn-bar" id="conn-bar">
   <span class="spin" style="width:12px;height:12px;border-width:1.5px"></span>
   <span id="conn-text">Connecting…</span>
@@ -848,7 +882,6 @@ body {
     <div class="auth-logo-sub">Sign in to your account</div>
   </div>
   <div class="auth-card">
-    <input id="server-url-input" type="hidden" value="https://commerce-headed-properly-gene.trycloudflare.com"/>
     <div class="auth-tabs">
       <button class="auth-tab on" onclick="switchTab('login')">Sign In</button>
       <button class="auth-tab" onclick="switchTab('register')">Create Account</button>
@@ -872,10 +905,8 @@ body {
 <!-- ══ APP ══ -->
 <div id="app">
 
-  <!-- Sidebar backdrop -->
   <div id="sidebar-backdrop" onclick="closeSidebar()"></div>
 
-  <!-- Slide-in Sidebar -->
   <div class="sidebar" id="sidebar">
     <div class="sb-head">
       <div class="sb-head-logo">MW</div>
@@ -898,7 +929,7 @@ body {
     </div>
   </div>
 
-  <!-- ── CONVERSATIONS LIST VIEW ────────────────────────── -->
+  <!-- CONVERSATIONS LIST -->
   <div class="view active" id="view-convos">
     <div class="topbar">
       <button class="topbar-menu" onclick="openSidebar()">☰</button>
@@ -910,7 +941,7 @@ body {
     </div>
   </div>
 
-  <!-- ── CHAT VIEW ─────────────────────────────────────── -->
+  <!-- CHAT VIEW -->
   <div class="view" id="view-chat">
     <div class="chat-hd">
       <button class="chat-back" onclick="backToList()">‹</button>
@@ -937,7 +968,7 @@ body {
     </div>
   </div>
 
-  <!-- ── FRIENDS VIEW ───────────────────────────────────── -->
+  <!-- FRIENDS VIEW -->
   <div class="view" id="view-friends">
     <div class="topbar">
       <button class="topbar-menu" onclick="openSidebar()">☰</button>
@@ -966,7 +997,7 @@ body {
     </div>
   </div>
 
-  <!-- ── NOTIFICATIONS VIEW ─────────────────────────────── -->
+  <!-- NOTIFICATIONS VIEW -->
   <div class="view" id="view-notifs">
     <div class="topbar">
       <button class="topbar-menu" onclick="openSidebar()">☰</button>
@@ -974,11 +1005,11 @@ body {
       <button class="topbar-action" onclick="markNotifsRead()" title="Mark all read" style="font-size:14px;color:var(--accent)">✓ All</button>
     </div>
     <div class="notifs-body" id="notifs-body">
-      <div class="empty" style="height:180px"><div class="empty-t">All caught up!</div></div>
+      <div class="empty"><div class="empty-t">All caught up!</div></div>
     </div>
   </div>
 
-  <!-- ── PROFILE VIEW ───────────────────────────────────── -->
+  <!-- PROFILE VIEW -->
   <div class="view" id="view-profile">
     <div class="topbar">
       <button class="topbar-menu" onclick="openSidebar()">☰</button>
@@ -1009,6 +1040,19 @@ body {
             <span class="settings-row-val" id="theme-val">Dark</span>
           </div>
         </div>
+        <div class="settings-label">PWA</div>
+        <div class="settings-card">
+          <div class="settings-row" onclick="promptInstall()" style="cursor:pointer" id="install-row">
+            <span class="settings-row-icon">📲</span>
+            <span class="settings-row-label">Install App</span>
+            <span class="settings-row-val" id="install-row-val">Available</span>
+          </div>
+          <div class="settings-row" onclick="requestNotifPermission()" style="cursor:pointer">
+            <span class="settings-row-icon">🔔</span>
+            <span class="settings-row-label">Notifications</span>
+            <span class="settings-row-val" id="notif-perm-val">—</span>
+          </div>
+        </div>
         <div class="settings-label">Account</div>
         <div class="settings-card">
           <div class="settings-row" onclick="doLogout()" style="cursor:pointer">
@@ -1021,33 +1065,27 @@ body {
     </div>
   </div>
 
-  <!-- ══ BOTTOM TAB BAR ══════════════════════════════════ -->
+  <!-- TAB BAR -->
   <div class="tab-bar">
     <button class="tbn on" id="tbn-convos" onclick="goToView('convos')">
-      <span class="tbn-icon">💬</span>
-      <span>Chats</span>
+      <span class="tbn-icon">💬</span><span>Chats</span>
     </button>
     <button class="tbn" id="tbn-friends" onclick="goToView('friends')">
-      <span class="tbn-icon">👥</span>
-      <span>Friends</span>
+      <span class="tbn-icon">👥</span><span>Friends</span>
       <span class="tbn-badge" id="req-badge"></span>
     </button>
     <button class="tbn" id="tbn-notifs" onclick="goToView('notifs')">
-      <span class="tbn-icon">🔔</span>
-      <span>Alerts</span>
+      <span class="tbn-icon">🔔</span><span>Alerts</span>
       <span class="tbn-badge" id="notif-badge"></span>
     </button>
     <button class="tbn" id="tbn-profile" onclick="goToView('profile')">
-      <span class="tbn-icon" id="tbn-profile-icon">👤</span>
-      <span>Profile</span>
+      <span class="tbn-icon" id="tbn-profile-icon">👤</span><span>Profile</span>
     </button>
   </div>
 
 </div><!-- #app -->
 
-<!-- ══ BOTTOM SHEETS ══════════════════════════════════════ -->
-
-<!-- Backdrop for sheets -->
+<!-- SHEETS BACKDROP -->
 <div class="sheet-backdrop" id="sheet-backdrop" onclick="closeAllSheets()"></div>
 
 <!-- New Conversation Sheet -->
@@ -1079,7 +1117,7 @@ body {
   </div>
 </div>
 
-<!-- Manage Sheet (DM / Group) -->
+<!-- Manage Sheet -->
 <div class="sheet" id="sh-manage">
   <div class="sheet-handle"></div>
   <div class="sheet-hd">
@@ -1087,6 +1125,19 @@ body {
     <button class="sheet-close" onclick="closeSheet('sh-manage')">✕</button>
   </div>
   <div class="sheet-body" id="sh-manage-body"></div>
+</div>
+
+<!-- Install Banner -->
+<div id="install-banner">
+  <span style="font-size:22px">📲</span>
+  <div style="flex:1;min-width:0">
+    <div style="font-size:.88rem;font-weight:700;margin-bottom:2px">Install MyWeb Chat</div>
+    <div style="font-size:.75rem;color:var(--muted)">Add to your home screen for the best experience</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button onclick="dismissInstallBanner()" style="padding:6px 10px;border-radius:8px;border:none;background:var(--surface3);color:var(--muted);font-family:'Inter',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer">Later</button>
+    <button onclick="promptInstall()" style="padding:6px 10px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-family:'Inter',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer">Install</button>
+  </div>
 </div>
 
 <!-- Call overlay -->
@@ -1101,32 +1152,175 @@ body {
   <div class="call-btns" id="call-btns"></div>
 </div>
 
-<!-- Toasts -->
 <div class="toasts" id="toasts"></div>
 
 <script>
+// ══ PWA: MANIFEST + SERVICE WORKER ══════════════════════
+(function setupPWA() {
+  // SVG icon as data URI
+  
+  
+
+  // Inline manifest
+ // Inline manifest
+  const manifest = {
+    name: 'MyWeb Chat',
+    short_name: 'MWH Chat',
+    description: 'Fast, private messaging',
+    start_url: location.href,
+    scope: location.href,
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#0d0d0f',
+    theme_color: '#0d0d0f',
+    icons: [
+      { 
+        src: location.origin + '/icon-192.png', 
+        sizes: '192x192', 
+        type: 'image/png', 
+        purpose: 'any maskable' 
+      },
+      { 
+        src: location.origin + '/icon-512.png', 
+        sizes: '512x512', 
+        type: 'image/png', 
+        purpose: 'any maskable' 
+      }
+    ],
+    categories: ['social', 'communication'],
+    lang: 'en'
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+  const manifestUrl = URL.createObjectURL(manifestBlob);
+  document.getElementById('pwa-manifest').href = manifestUrl;
+
+  // Apple touch icon
+  document.getElementById('apple-touch-icon').href = '/icon-512.png';
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(reg => {
+      console.log('[PWA] Service Worker registered', reg.scope);
+      // Check for updates every 30s in the background
+      setInterval(() => reg.update(), 30000);
+    })
+    .catch(err => console.warn('[PWA] SW registration failed:', err));
+}
+})(); // <--- Add this missing closing statement here!
+    
+// ══ PWA INSTALL PROMPT ═══════════════════════════════════
+let _deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  // Show install banner after 3 seconds if user hasn't dismissed it
+  if (!localStorage.getItem('mwc_install_dismissed')) {
+    setTimeout(showInstallBanner, 3000);
+  }
+  updateInstallRow();
+});
+
+window.addEventListener('appinstalled', () => {
+  _deferredInstallPrompt = null;
+  dismissInstallBanner();
+  toast('✅ App installed! Find it on your home screen.', 's');
+  updateInstallRow();
+});
+
+function showInstallBanner() {
+  if (_deferredInstallPrompt) document.getElementById('install-banner').classList.add('show');
+}
+
+function dismissInstallBanner() {
+  document.getElementById('install-banner').classList.remove('show');
+  localStorage.setItem('mwc_install_dismissed', '1');
+}
+
+async function promptInstall() {
+  if (!_deferredInstallPrompt) {
+    // Running as standalone PWA or browser doesn't support it
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || navigator.standalone === true;
+    if (isStandalone) { toast('✅ Already installed as an app!', 's'); }
+    else { toast('Open this page in Chrome or Safari and use "Add to Home Screen".', 'i'); }
+    return;
+  }
+  dismissInstallBanner();
+  _deferredInstallPrompt.prompt();
+  const { outcome } = await _deferredInstallPrompt.userChoice;
+  _deferredInstallPrompt = null;
+  updateInstallRow();
+  if (outcome === 'accepted') toast('✅ App installed!', 's');
+}
+
+function updateInstallRow() {
+  const row = document.getElementById('install-row');
+  const val = document.getElementById('install-row-val');
+  if (!row || !val) return;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (isStandalone) {
+    val.textContent = 'Installed ✓';
+    val.style.color = 'var(--green)';
+    row.style.opacity = '.6';
+  } else if (_deferredInstallPrompt) {
+    val.textContent = 'Tap to install';
+    val.style.color = 'var(--accent)';
+  } else {
+    val.textContent = 'Use browser menu';
+    val.style.color = 'var(--muted)';
+  }
+}
+
+// Update theme-color meta to match current theme
+function syncThemeColor() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.getElementById('meta-theme-color').content = dark ? '#0d0d0f' : '#f2f2f7';
+}
+
 // ══ CONFIG ═══════════════════════════════════════════════
+const SERVER_URL  = 'https://commerce-headed-properly-gene.trycloudflare.com';
 const AW_ENDPOINT = 'https://nyc.cloud.appwrite.io/v1';
 const AW_PROJECT  = '69cdb316003b87006984';
 const DEV_NAMES   = ['thegoooddev','jackthedev','distractor51522'];
 
-// ══ SDK ══════════════════════════════════════════════════
 const { Client, Account } = Appwrite;
 const awClient  = new Client().setEndpoint(AW_ENDPOINT).setProject(AW_PROJECT);
 const awAccount = new Account(awClient);
 
-// ══ STATE ════════════════════════════════════════════════
 let me = null, myProfile = null, socket = null;
 let convos = {}, friendships = {}, notifs = [];
 let activeConvo = null, nicknames = {}, isDev = false;
 let typingTimer = null, typingUsers = {};
-let serverUrl = '';
 let currentView = 'convos';
 
-// Call state
 let peerConn = null, localStream = null;
 let activeCallId = null, activeCallUid = null, callType = 'audio';
 let _callInviteData = null;
+
+// ══ HELPERS ══════════════════════════════════════════════
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function fmtTime(iso) { if (!iso) return ''; return new Date(iso).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); }
+function relTime(iso) {
+  if (!iso) return ''; const diff = (Date.now() - new Date(iso)) / 1000;
+  if (diff < 60) return 'now'; if (diff < 3600) return Math.floor(diff/60)+'m';
+  if (diff < 86400) return Math.floor(diff/3600)+'h'; return Math.floor(diff/86400)+'d';
+}
+
+function toast(msg, type = 'i') {
+  const w = document.getElementById('toasts');
+  const el = document.createElement('div'); el.className = `toast ${type}`;
+  el.innerHTML = `<div class="toast-dot"></div><span>${escHtml(msg)}</span>`;
+  w.appendChild(el); setTimeout(() => el.remove(), 3500);
+}
+
+function showConnBar(state) {
+  const b = document.getElementById('conn-bar'); b.className = `conn-bar show ${state}`;
+  document.getElementById('conn-text').textContent = state === 'connecting' ? 'Connecting…' : 'Disconnected. Reconnecting…';
+}
+function hideConnBar() { document.getElementById('conn-bar').className = 'conn-bar'; }
 
 // ══ AUTH ═════════════════════════════════════════════════
 function switchTab(t) {
@@ -1135,14 +1329,12 @@ function switchTab(t) {
   document.querySelectorAll('.auth-tab').forEach((el,i) => el.classList.toggle('on', (i===0&&t==='login')||(i===1&&t==='register')));
   document.getElementById('auth-err').style.display = 'none';
 }
-
 function showErr(msg) { const e=document.getElementById('auth-err'); e.textContent=msg; e.style.display='block'; }
 
 async function doLogin() {
   const email = document.getElementById('l-email').value.trim();
   const pass  = document.getElementById('l-pass').value;
   if (!email || !pass) { showErr('Fill in all fields.'); return; }
-  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   const btn = document.getElementById('login-btn');
   btn.disabled = true; btn.textContent = 'Signing in…';
   try {
@@ -1160,7 +1352,6 @@ async function doRegister() {
   const username = document.getElementById('r-user').value.trim().toLowerCase();
   const name     = document.getElementById('r-name').value.trim();
   if (!email||!pass||!username||!name) { showErr('Fill in all fields.'); return; }
-  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   const btn = document.getElementById('reg-btn');
   btn.disabled = true; btn.textContent = 'Creating…';
   try {
@@ -1175,38 +1366,72 @@ async function doRegister() {
 
 async function doLogout() {
   try { await awAccount.deleteSession('current'); } catch(e) {}
-  socket?.disconnect();
+  socket?.disconnect(); socket = null;
   me = null; myProfile = null; activeConvo = null;
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('auth-screen').style.display = 'flex';
-  closeSidebar();
-  toast('Signed out.', 'i');
+  convos = {}; friendships = {}; notifs = [];
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('auth-screen').classList.add('show');
+  closeSidebar(); toast('Signed out.', 'i');
 }
 
 // ══ INIT ═════════════════════════════════════════════════
+let _syncRetries = 0;
+
 async function initApp(newUsername = null) {
-  try { me = await awAccount.get(); } catch(e) { return; }
-  if (!serverUrl) serverUrl = document.getElementById('server-url-input').value;
-  loadNicks();
   try {
-    const r = await fetch(`${serverUrl}/api/profile/sync`, {
+    me = await awAccount.get();
+  } catch(e) {
+    hideSplash(); showAuth(); return;
+  }
+  loadNicks();
+  await syncProfile(newUsername);
+}
+
+async function syncProfile(newUsername, isRetry = false) {
+  try {
+    const r = await fetch(`${SERVER_URL}/api/profile/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appwriteId: me.$id, username: newUsername || me.email.split('@')[0].toLowerCase(), displayName: me.name || newUsername })
+      body: JSON.stringify({
+        appwriteId: me.$id,
+        username: newUsername || me.email.split('@')[0].toLowerCase(),
+        displayName: me.name || newUsername
+      })
     });
+    if (!r.ok) throw new Error('Server error ' + r.status);
     const d = await r.json();
     myProfile = d.user; isDev = d.isDev;
-  } catch(e) { toast('Cannot reach chat server.', 'e'); return; }
-
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
+    _syncRetries = 0;
+  } catch(e) {
+    _syncRetries++;
+    if (_syncRetries === 1 && !isRetry) {
+      hideSplash();
+      document.getElementById('auth-screen').classList.remove('show');
+      document.getElementById('app').classList.add('show');
+      updateProfileUI(); showConnBar('connecting');
+      setTimeout(() => syncProfile(newUsername, true), 4000);
+      connectSocket(); return;
+    }
+    const delay = Math.min(5000 * _syncRetries, 30000);
+    setTimeout(() => syncProfile(newUsername, true), delay);
+    return;
+  }
+  hideSplash();
+  document.getElementById('auth-screen').classList.remove('show');
+  document.getElementById('app').classList.add('show');
   updateProfileUI();
-  connectSocket();
+  if (!socket || !socket.connected) {
+    if (socket) { socket.disconnect(); socket = null; }
+    connectSocket();
+  }
 }
+
+function hideSplash() { document.getElementById('splash').classList.add('hidden'); }
+function showAuth() { document.getElementById('auth-screen').classList.add('show'); }
 
 function connectSocket() {
   showConnBar('connecting');
-  socket = io(serverUrl, { transports: ['websocket','polling'], reconnectionDelay: 2000 });
+  socket = io(SERVER_URL, { transports: ['websocket','polling'], reconnectionDelay: 2000 });
 
   socket.on('connect', () => { hideConnBar(); socket.emit('auth', { appwriteId: me.$id }); });
   socket.on('disconnect', () => showConnBar('disconnected'));
@@ -1215,12 +1440,21 @@ function connectSocket() {
 
   socket.on('init', d => {
     myProfile = d.user; isDev = d.isDev;
+    convos = {};
     d.conversations.forEach(c => { convos[c.id] = c; });
+    friendships = {};
     d.friendships.forEach(f => { friendships[f.id] = f; });
     notifs = d.notifications || [];
-    updateProfileUI(); updateFriendBadge(); updateNotifBadge();
-    renderSidebar(); renderConvosList();
-    renderFriendsList(); renderRequests();
+    updateProfileUI();
+    updateFriendBadge();
+    updateNotifBadge();
+    renderSidebar();
+    renderConvosList();
+    renderFriendsList();
+    renderRequests();
+    renderNotifs();
+    updateInstallRow();
+    updateNotifPermUI();
   });
 
   socket.on('new_convo', c => { convos[c.id] = c; renderSidebar(); renderConvosList(); });
@@ -1252,8 +1486,16 @@ function connectSocket() {
     updateTypingBar(convoId);
   });
 
-  socket.on('friendship_update', f => { friendships[f.id] = f; updateFriendBadge(); renderFriendsList(); renderRequests(); populateNewDM(); populateGroupSel(); });
-  socket.on('friendship_removed', d => { delete friendships[d.id]; updateFriendBadge(); renderFriendsList(); renderRequests(); populateNewDM(); populateGroupSel(); });
+  socket.on('friendship_update', f => {
+    friendships[f.id] = f;
+    updateFriendBadge(); renderFriendsList(); renderRequests();
+    populateNewDM(); populateGroupSel();
+  });
+  socket.on('friendship_removed', d => {
+    delete friendships[d.id];
+    updateFriendBadge(); renderFriendsList(); renderRequests();
+    populateNewDM(); populateGroupSel();
+  });
 
   socket.on('profile_updated', u => {
     Object.values(convos).forEach(c => {
@@ -1266,7 +1508,14 @@ function connectSocket() {
 
   socket.on('friend_online', ({ userId }) => markOnline(userId, true));
   socket.on('friend_offline', ({ userId }) => markOnline(userId, false));
-  socket.on('notification', n => { notifs.unshift(n); updateNotifBadge(); renderNotifs(); showNotifToast(n); });
+
+  socket.on('notification', n => {
+    notifs.unshift(n);
+    updateNotifBadge();
+    renderNotifs();
+    showNotifToast(n);
+  });
+
   socket.on('message_deleted', ({ convoId, messageId }) => {
     if (convos[convoId]?._msgs) convos[convoId]._msgs = convos[convoId]._msgs.filter(m => m.id !== messageId);
     if (activeConvo?.id === convoId) renderMsgs();
@@ -1274,7 +1523,6 @@ function connectSocket() {
   socket.on('error', d => toast(d.message, 'e'));
   socket.on('system_broadcast', d => toast(`📢 ${d.from}: ${d.text}`, 'w'));
 
-  // Calls
   socket.on('call_invite', onCallInvite);
   socket.on('call_answer', onCallAnswer);
   socket.on('call_ice', onCallIce);
@@ -1293,11 +1541,7 @@ function goToView(name) {
   currentView = name;
   closeSidebar();
 }
-
-function backToList() {
-  goToView('convos');
-  activeConvo = null;
-}
+function backToList() { goToView('convos'); activeConvo = null; }
 
 // ══ SIDEBAR ══════════════════════════════════════════════
 function openSidebar() {
@@ -1309,7 +1553,6 @@ function closeSidebar() {
   document.getElementById('sidebar-backdrop').classList.remove('show');
 }
 
-// Swipe to open sidebar
 let touchStartX = 0, touchStartY = 0;
 document.addEventListener('touchstart', e => {
   touchStartX = e.touches[0].clientX;
@@ -1354,7 +1597,7 @@ function renderSidebar() {
       const timeStr = c.lastMessage ? relTime(c.lastMessage.createdAt) : '';
       html += `<div class="ci ${on}" onclick="sidebarOpenConvo('${c.id}')">
         <div class="ci-av">${avHtml}${dot}</div>
-        <div class="ci-body"><div class="ci-name">${escHtml(dispName)}</div>${last ? `<div class="ci-last">${last}</div>` : ''}</div>
+        <div class="ci-body"><div class="ci-name">${escHtml(dispName)}</div>${last?`<div class="ci-last">${last}</div>`:''}</div>
         <div class="ci-meta"><div class="ci-time">${timeStr}</div></div>
       </div>`;
     });
@@ -1368,33 +1611,27 @@ function renderSidebar() {
       const timeStr = c.lastMessage ? relTime(c.lastMessage.createdAt) : '';
       html += `<div class="ci ${on}" onclick="sidebarOpenConvo('${c.id}')">
         <div class="ci-av" style="border-radius:10px;font-size:16px">${avHtml}</div>
-        <div class="ci-body"><div class="ci-name">${escHtml(c.name)}</div>${last ? `<div class="ci-last">${last}</div>` : ''}</div>
+        <div class="ci-body"><div class="ci-name">${escHtml(c.name)}</div>${last?`<div class="ci-last">${last}</div>`:''}</div>
         <div class="ci-meta"><div class="ci-time">${timeStr}</div></div>
       </div>`;
     });
   }
   document.getElementById('sb-list').innerHTML = html;
 }
+function sidebarOpenConvo(id) { closeSidebar(); openConvo(id); }
 
-function sidebarOpenConvo(id) {
-  closeSidebar();
-  openConvo(id);
-}
-
-// ══ CONVOS LIST (main view) ═══════════════════════════════
+// ══ CONVOS LIST ══════════════════════════════════════════
 function renderConvosList() {
   const sorted = Object.values(convos).sort((a,b) => {
     const ta = a.lastMessage?.createdAt || a.createdAt || '';
     const tb = b.lastMessage?.createdAt || b.createdAt || '';
     return tb.localeCompare(ta);
   });
-
   const el = document.getElementById('convos-list-body');
   if (!sorted.length) {
     el.innerHTML = '<div class="empty"><div class="empty-ico">💬</div><div class="empty-t">No conversations yet</div><div class="empty-s">Add a friend and start chatting!</div></div>';
     return;
   }
-
   let html = '';
   sorted.forEach(c => {
     const isGroup = c.type === 'group';
@@ -1420,8 +1657,7 @@ function renderConvosList() {
 
 // ══ CHAT ═════════════════════════════════════════════════
 function openConvo(id) {
-  const c = convos[id];
-  if (!c) return;
+  const c = convos[id]; if (!c) return;
   activeConvo = c;
   goToView('chat');
   updateChatHeader();
@@ -1535,9 +1771,7 @@ function onMsgKey(e) {
   socket?.emit('typing', { convoId: activeConvo.id, isTyping: true });
   typingTimer = setTimeout(() => socket?.emit('typing', { convoId: activeConvo.id, isTyping: false }), 2000);
 }
-
 function onMsgInput(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
-
 function updateTypingBar(convoId) {
   if (activeConvo?.id !== convoId) return;
   const names = Object.values(typingUsers[convoId] || {});
@@ -1556,9 +1790,7 @@ function updateFriendBadge() {
 }
 
 function switchFTab(name, btn) {
-  ['all','requests','add'].forEach(t => {
-    document.getElementById('ft-' + t).style.display = t === name ? '' : 'none';
-  });
+  ['all','requests','add'].forEach(t => { document.getElementById('ft-' + t).style.display = t === name ? '' : 'none'; });
   document.querySelectorAll('#view-friends .seg-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   if (name === 'all') renderFriendsList();
@@ -1623,13 +1855,14 @@ function renderRequests() {
 }
 
 function sendFriendReq() {
-  const v = document.getElementById('add-user-in').value.trim();
-  if (!v) return;
+  const v = document.getElementById('add-user-in').value.trim(); if (!v) return;
   document.getElementById('add-result').textContent = 'Sending…';
   socket.emit('friend_request', { toUsername: v });
-  socket.once('friendship_update', () => { document.getElementById('add-result').textContent = 'Request sent!'; document.getElementById('add-user-in').value = ''; });
+  socket.once('friendship_update', () => {
+    document.getElementById('add-result').textContent = 'Request sent!';
+    document.getElementById('add-user-in').value = '';
+  });
 }
-
 function respondFriend(id, accept) { socket.emit('friend_respond', { friendshipId: id, accept }); }
 function cancelFriend(id) { socket.emit('friend_remove', { friendshipId: id }); }
 function removeFriend(id) { if (confirm('Remove this friend?')) socket.emit('friend_remove', { friendshipId: id }); }
@@ -1697,10 +1930,8 @@ function openManage() {
         <button class="settings-row-btn" onclick="saveManageNick('${o.appwriteId}')">Save</button>
       </div>
       <p style="font-size:.75rem;color:var(--dim);margin-top:6px">Only visible to you.</p>`;
-    openSheet('sh-manage');
-    return;
+    openSheet('sh-manage'); return;
   }
-  // Group
   const isCreator = c.createdBy === me.$id;
   const members = c.memberProfiles || [];
   const canAdd = getAccepted().map(f => f.otherUser).filter(o => o && !c.members.includes(o.appwriteId));
@@ -1748,64 +1979,116 @@ function updateNotifBadge() {
   document.getElementById('notif-badge').classList.toggle('show', n > 0);
 }
 
+function notifIcon(type) {
+  const map = { message:'💬', friend_request:'👥', friend_accepted:'🤝', mention:'🔔', group_invite:'👥', call:'📞' };
+  return map[type] || '🔔';
+}
+
 function renderNotifs() {
   const el = document.getElementById('notifs-body');
-  if (!notifs.length) { el.innerHTML = '<div class="empty" style="height:180px"><div class="empty-t">All caught up!</div></div>'; return; }
-  el.innerHTML = notifs.map(n => `<div class="notif-item ${n.read?'':'unread'}" onclick="clickNotif('${n.ref||''}','${n.type}')">
-    <div class="notif-dot"></div>
-    <div class="notif-text">${escHtml(n.text)}</div>
-    <div class="notif-time">${relTime(n.createdAt)}</div>
-  </div>`).join('');
-}
-
-function clickNotif(ref, type) {
-  if (type === 'message' && ref && convos[ref]) { openConvo(ref); }
-  else if (type === 'friend_request') { goToView('friends'); switchFTab('requests', document.querySelectorAll('#view-friends .seg-btn')[1]); }
-}
-
-function markNotifsRead() { notifs.forEach(n => n.read = true); updateNotifBadge(); renderNotifs(); socket?.emit('mark_notifications_read'); }
-function showNotifToast(n) { toast(n.text, 'i'); }
-
-function notifyNewMsg(convo, msg) {
-  if (msg.senderId === me.$id) return;
-  const name = convo.type === 'group' ? convo.name : (nicknames[convo.otherUserId] || convo.displayName || 'User');
-  toast(`💬 ${name}: ${msg.text.slice(0, 40)}`, 'i');
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(name, { body: msg.text.slice(0, 80), icon: '/favicon.ico' });
+  if (!notifs.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-ico">🔔</div><div class="empty-t">All caught up!</div><div class="empty-s">Notifications will appear here.</div></div>';
+    return;
   }
+  el.innerHTML = notifs.map(n => `
+    <div class="notif-item ${n.read ? '' : 'unread'}" onclick="clickNotif('${escAttr(n.ref||'')}','${escAttr(n.type||'')}','${escAttr(n.id||'')}')">
+      <span class="notif-icon">${notifIcon(n.type)}</span>
+      <div class="notif-content">
+        <div class="notif-text">${escHtml(n.text || '')}</div>
+        <div class="notif-time">${relTime(n.createdAt)}</div>
+      </div>
+      ${!n.read ? '<div class="notif-dot" style="margin-top:6px;flex-shrink:0"></div>' : ''}
+    </div>`).join('');
+}
+
+function clickNotif(ref, type, id) {
+  const n = notifs.find(x => String(x.id) === String(id));
+  if (n) n.read = true;
+  updateNotifBadge(); renderNotifs();
+  if (type === 'message' && ref && convos[ref]) { openConvo(ref); }
+  else if (type === 'friend_request' || type === 'friend_accepted') {
+    goToView('friends');
+    const reqBtn = document.querySelectorAll('#view-friends .seg-btn')[1];
+    switchFTab('requests', reqBtn);
+  }
+}
+
+function markNotifsRead() {
+  notifs.forEach(n => n.read = true);
+  updateNotifBadge(); renderNotifs();
+  socket?.emit('mark_notifications_read');
+}
+
+function showNotifToast(n) {
+  const icon = notifIcon(n.type);
+  toast(`${icon} ${n.text}`, 'i');
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification('MyWeb Chat', { body: n.text, icon: '' });
+    } catch(e) {}
+  }
+}
+
+function notifyNewMsg(convo, message) {
+  if (document.visibilityState === 'visible' && currentView !== 'chat') return;
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const name = convo.type === 'group' ? convo.name : (nicknames[convo.otherUserId] || convo.displayName || 'Someone');
+    try { new Notification(name, { body: message.text, tag: convo.id }); } catch(e) {}
+  }
+}
+
+// ══ NOTIFICATIONS PERMISSION ════════════════════════════
+function updateNotifPermUI() {
+  const el = document.getElementById('notif-perm-val');
+  if (!el) return;
+  if (!('Notification' in window)) { el.textContent = 'Not supported'; return; }
+  const p = Notification.permission;
+  el.textContent = p === 'granted' ? 'Enabled ✓' : p === 'denied' ? 'Blocked' : 'Tap to enable';
+  el.style.color = p === 'granted' ? 'var(--green)' : p === 'denied' ? 'var(--red)' : 'var(--accent)';
+}
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) { toast('Notifications not supported in this browser.', 'w'); return; }
+  if (Notification.permission === 'granted') { toast('✅ Notifications already enabled!', 's'); return; }
+  if (Notification.permission === 'denied') { toast('Notifications are blocked. Enable them in your browser/OS settings.', 'w'); return; }
+  const p = await Notification.requestPermission();
+  updateNotifPermUI();
+  if (p === 'granted') toast('🔔 Notifications enabled!', 's');
+  else toast('Notifications blocked.', 'w');
 }
 
 // ══ PROFILE ══════════════════════════════════════════════
 function updateProfileUI() {
   if (!myProfile) return;
-  // Rail footer
   const fav = document.getElementById('sb-footer-av');
   if (myProfile.avatar) fav.innerHTML = `<img src="${myProfile.avatar}" alt=""/>`;
   else fav.textContent = (myProfile.displayName || '?')[0];
   document.getElementById('sb-footer-name').textContent = myProfile.displayName || '—';
   document.getElementById('sb-footer-tag').textContent = '@' + (myProfile.username || '—');
-  // Profile view
+
   const pav = document.getElementById('prof-av-big');
   if (myProfile.avatar) pav.innerHTML = `<img src="${myProfile.avatar}" alt=""/><input type="file" id="av-file-input" accept="image/*" style="display:none" onchange="uploadAvatar(event)"/>`;
   else pav.innerHTML = `${(myProfile.displayName || '?')[0]}<input type="file" id="av-file-input" accept="image/*" style="display:none" onchange="uploadAvatar(event)"/>`;
   document.getElementById('prof-name-big').textContent = myProfile.displayName || '—';
   document.getElementById('prof-tag').textContent = '@' + (myProfile.username || '—');
   document.getElementById('dn-input').value = myProfile.displayName || '';
-  // Tab icon
+
   const icon = document.getElementById('tbn-profile-icon');
   if (icon && myProfile.avatar) icon.innerHTML = `<img src="${myProfile.avatar}" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover"/>`;
 }
 
 function pickAvatar() { document.getElementById('av-file-input')?.click(); }
-
 function uploadAvatar(e) {
   const file = e.target.files[0]; if (!file) return;
   if (file.size > 3 * 1024 * 1024) { toast('Image too large (max 3MB)', 'e'); return; }
   const r = new FileReader();
-  r.onload = () => { const b64 = r.result; socket.emit('update_profile', { avatar: b64 }); myProfile.avatar = b64; updateProfileUI(); toast('Profile picture updated!', 's'); };
+  r.onload = () => {
+    const b64 = r.result;
+    socket.emit('update_profile', { avatar: b64 });
+    myProfile.avatar = b64; updateProfileUI(); toast('Profile picture updated!', 's');
+  };
   r.readAsDataURL(file);
 }
-
 function updateDisplayName() {
   const v = document.getElementById('dn-input').value.trim(); if (!v) return;
   socket.emit('update_profile', { displayName: v });
@@ -1907,7 +2190,6 @@ function closeAllSheets() {
   document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
   document.getElementById('sheet-backdrop').classList.remove('show');
 }
-
 function switchSheetTab(group, name, btn) {
   const map = { new: ['dm','group'] };
   const pfx = { new: 'snt' };
@@ -1928,28 +2210,7 @@ function toggleTheme() {
   h.setAttribute('data-theme', t); localStorage.setItem('mwc_theme', t);
   const val = document.getElementById('theme-val');
   if (val) val.textContent = t === 'dark' ? 'Dark' : 'Light';
-}
-
-function toast(msg, type = 'i') {
-  const w = document.getElementById('toasts');
-  const el = document.createElement('div'); el.className = `toast ${type}`;
-  el.innerHTML = `<div class="toast-dot"></div><span>${escHtml(msg)}</span>`;
-  w.appendChild(el); setTimeout(() => el.remove(), 3500);
-}
-
-function showConnBar(state) {
-  const b = document.getElementById('conn-bar'); b.className = `conn-bar show ${state}`;
-  document.getElementById('conn-text').textContent = state === 'connecting' ? 'Connecting…' : 'Disconnected. Reconnecting…';
-}
-function hideConnBar() { document.getElementById('conn-bar').className = 'conn-bar'; }
-
-function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function fmtTime(iso) { if (!iso) return ''; return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
-function relTime(iso) {
-  if (!iso) return ''; const diff = (Date.now() - new Date(iso)) / 1000;
-  if (diff < 60) return 'now'; if (diff < 3600) return Math.floor(diff/60)+'m';
-  if (diff < 86400) return Math.floor(diff/3600)+'h'; return Math.floor(diff/86400)+'d';
+  syncThemeColor();
 }
 
 // ══ BOOT ═════════════════════════════════════════════════
@@ -1958,34 +2219,11 @@ function relTime(iso) {
   document.documentElement.setAttribute('data-theme', saved);
   const themeVal = document.getElementById('theme-val');
   if (themeVal) themeVal.textContent = saved === 'dark' ? 'Dark' : 'Light';
-  serverUrl = document.getElementById('server-url-input').value;
+  syncThemeColor();
+  updateInstallRow();
+  updateNotifPermUI();
   await initApp();
 })();
-</script>
-  <!-- Add a hidden install button in your HTML -->
-<button id="pwa-install-btn" style="display: none;">Install App</button>
-
-<script>
-  let deferredPrompt;
-  const installBtn = document.getElementById('pwa-install-btn');
-
-  // Capture the browser's install prompt
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    installBtn.style.display = 'block'; // Show your install button
-  });
-
-  // Trigger installation on click
-  installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      installBtn.style.display = 'none';
-    }
-    deferredPrompt = null;
-  });
 </script>
 </body>
 </html>
