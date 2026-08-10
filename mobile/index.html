@@ -1175,13 +1175,13 @@ body {
     theme_color: '#0d0d0f',
     icons: [
       { 
-        src: location.origin + '/icon-192.png', 
+        src: location.origin + './icon-192.png', 
         sizes: '192x192', 
         type: 'image/png', 
         purpose: 'any maskable' 
       },
       { 
-        src: location.origin + '/icon-512.png', 
+        src: location.origin + './icon-512.png', 
         sizes: '512x512', 
         type: 'image/png', 
         purpose: 'any maskable' 
@@ -1195,11 +1195,11 @@ body {
   document.getElementById('pwa-manifest').href = manifestUrl;
 
   // Apple touch icon
-  document.getElementById('apple-touch-icon').href = '/icon-512.png';
+  document.getElementById('apple-touch-icon').href = './icon-512.png';
 
 // Service Worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js')
+  navigator.serviceWorker.register('./sw.js')
     .then(reg => {
       console.log('[PWA] Service Worker registered', reg.scope);
       // Check for updates every 30s in the background
