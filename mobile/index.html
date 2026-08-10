@@ -2024,17 +2024,36 @@ function showNotifToast(n) {
   const icon = notifIcon(n.type);
   toast(`${icon} ${n.text}`, 'i');
   if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      new Notification('MyWeb Chat', { body: n.text, icon: '' });
-    } catch(e) {}
+    const iconUrl = new URL('icon-192.png', location.href).href;
+    navigator.serviceWorker?.ready.then(reg => {
+      reg.showNotification('MyWeb Chat', {
+        body: n.text,
+        icon: iconUrl,
+        badge: iconUrl,
+        tag: String(n.id || 'mwc-notif')
+      });
+    }).catch(() => {
+      try { new Notification('MyWeb Chat', { body: n.text, icon: iconUrl }); } catch(e) {}
+    });
   }
 }
 
 function notifyNewMsg(convo, message) {
-  if (document.visibilityState === 'visible' && currentView !== 'chat') return;
+  if (document.visibilityState === 'visible' && currentView === 'chat' && activeConvo === convo.id) return;
   if ('Notification' in window && Notification.permission === 'granted') {
     const name = convo.type === 'group' ? convo.name : (nicknames[convo.otherUserId] || convo.displayName || 'Someone');
-    try { new Notification(name, { body: message.text, tag: convo.id }); } catch(e) {}
+    const iconUrl = new URL('icon-192.png', location.href).href;
+
+    navigator.serviceWorker?.ready.then(reg => {
+      reg.showNotification(name, {
+        body: message.text || 'Sent a message',
+        icon: iconUrl,
+        badge: iconUrl,
+        tag: String(convo.id)
+      });
+    }).catch(() => {
+      try { new Notification(name, { body: message.text, icon: iconUrl, tag: String(convo.id) }); } catch(e) {}
+    });
   }
 }
 
