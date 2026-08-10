@@ -1953,5 +1953,30 @@ function relTime(iso) {
   await initApp();
 })();
 </script>
+  <!-- Add a hidden install button in your HTML -->
+<button id="pwa-install-btn" style="display: none;">Install App</button>
+
+<script>
+  let deferredPrompt;
+  const installBtn = document.getElementById('pwa-install-btn');
+
+  // Capture the browser's install prompt
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'block'; // Show your install button
+  });
+
+  // Trigger installation on click
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      installBtn.style.display = 'none';
+    }
+    deferredPrompt = null;
+  });
+</script>
 </body>
 </html>
