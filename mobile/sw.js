@@ -6,15 +6,25 @@ const PRECACHE = [
   './icon-512.png'
 ];
 
-// Install event: Pre-cache static assets for offline use
+// Install event: Safe precaching that won't throw Uncaught TypeError
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(PRECACHE))
+    caches.open(CACHE).then(async cache => {
+      await Promise.allSettled(
+        PRECACHE.map(async url => {
+          try {
+            await cache.add(url);
+          } catch (err) {
+            console.warn('[SW] Could not cache file (check path/404):', url);
+          }
+        })
+      );
+    })
   );
   self.skipWaiting();
 });
 
-// Activate event: Clean up old cache versions & claim control immediately
+// Activate event: Clean up old cache versions
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -23,11 +33,11 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Fetch event: Apply network and caching strategies
+// Fetch event: Network-first with cache fallback
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Pass-through for realtime, backend, and external API calls
+  // Skip caching for backend sockets & real-time APIs
   if (url.hostname.includes('trycloudflare.com') ||
       url.hostname.includes('appwrite.io') ||
       url.hostname.includes('socket.io') ||
@@ -35,20 +45,6 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Cache-first strategy for static CDN assets and web fonts
-  if (url.hostname.includes('jsdelivr.net') ||
-      url.hostname.includes('fonts.gstatic.com')) {
-    e.respondWith(
-      caches.match(e.request).then(cached => cached || fetch(e.request).then(resp => {
-        const clone = resp.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
-        return resp;
-      }))
-    );
-    return;
-  }
-
-  // Network-first strategy for app page navigation (ensures updates load)
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request).catch(() => caches.match(e.request))
@@ -56,7 +52,6 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Default strategy: Network request with cache fallback
   e.respondWith(
     fetch(e.request).then(resp => {
       const clone = resp.clone();
@@ -66,10 +61,9 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// Push event: Handle incoming system notifications
+// Push notification event
 self.addEventListener('push', e => {
   if (!e.data) return;
-
   let data;
   try {
     data = e.data.json();
@@ -82,13 +76,12 @@ self.addEventListener('push', e => {
       body: data.body || '',
       icon: './icon-192.png',
       badge: './icon-192.png',
-      tag: data.tag || 'mwc',
-      data: data
+      tag: data.tag || 'mwc'
     })
   );
 });
 
-// Notification click event: Focus open app window or launch app path
+// Notification click event
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(
