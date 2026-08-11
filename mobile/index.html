@@ -2246,13 +2246,166 @@ function toggleTheme() {
   await initApp();
 })();
 </script>
-  <script>
+<script>
+// ══ NOTIFICATIONS ════════════════════════════════════════
+function updateNotifBadge() {
+  const n = notifs.filter(x => !x.read).length;
+  document.getElementById('notif-badge').classList.toggle('show', n > 0);
+}
+
+function notifIcon(type) {
+  const map = { message:'💬', friend_request:'👥', friend_accepted:'🤝', mention:'🔔', group_invite:'👥', call:'📞' };
+  return map[type] || '🔔';
+}
+
+function renderNotifs() {
+  const el = document.getElementById('notifs-body');
+  if (!notifs.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-ico">🔔</div><div class="empty-t">All caught up!</div><div class="empty-s">Notifications will appear here.</div></div>';
+    return;
+  }
+  el.innerHTML = notifs.map(n => `
+    <div class="notif-item ${n.read ? '' : 'unread'}" onclick="clickNotif('${escAttr(n.ref||'')}','${escAttr(n.type||'')}','${escAttr(n.id||'')}')">
+      <span class="notif-icon">${notifIcon(n.type)}</span>
+      <div class="notif-content">
+        <div class="notif-text">${escHtml(n.text || '')}</div>
+        <div class="notif-time">${relTime(n.createdAt)}</div>
+      </div>
+      ${!n.read ? '<div class="notif-dot" style="margin-top:6px;flex-shrink:0"></div>' : ''}
+    </div>`).join('');
+}
+
+function clickNotif(ref, type, id) {
+  const n = notifs.find(x => String(x.id) === String(id));
+  if (n) n.read = true;
+  updateNotifBadge(); renderNotifs();
+  if (type === 'message' && ref && convos[ref]) { openConvo(ref); }
+  else if (type === 'friend_request' || type === 'friend_accepted') {
+    goToView('friends');
+    const reqBtn = document.querySelectorAll('#view-friends .seg-btn')[1];
+    switchFTab('requests', reqBtn);
+  }
+}
+
+function markNotifsRead() {
+  notifs.forEach(n => n.read = true);
+  updateNotifBadge(); renderNotifs();
+  socket?.emit('mark_notifications_read');
+}
+
+function showNotifToast(n) {
+  const icon = notifIcon(n.type);
+  toast(`${icon} ${n.text}`, 'i');
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const iconUrl = new URL('icon-192.png', location.href).href;
+    const uniqueTag = `mwc-toast-${n.id || Date.now()}`;
+    navigator.serviceWorker?.ready.then(reg => {
+      reg.showNotification('MyWeb Chat', {
+        body: n.text,
+        icon: iconUrl,
+        badge: iconUrl,
+        tag: uniqueTag,
+        renotify: true
+      });
+    }).catch(() => {
+      try { new Notification('MyWeb Chat', { body: n.text, icon: iconUrl, tag: uniqueTag }); } catch(e) {}
+    });
+  }
+}
+
+function notifyNewMsg(convo, message) {
+  if (!convo || !message) return;
+  if (document.visibilityState === 'visible' && currentView === 'chat' && activeConvo === convo.id) return;
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const name = convo.type === 'group' ? convo.name : (nicknames[convo.otherUserId] || convo.displayName || 'Someone');
+    const iconUrl = new URL('icon-192.png', location.href).href;
+    const uniqueTag = `mwc-msg-${convo.id}-${Date.now()}`;
+
+    navigator.serviceWorker?.ready.then(reg => {
+      reg.showNotification(name, {
+        body: message.text || 'Sent a message',
+        icon: iconUrl,
+        badge: iconUrl,
+        tag: uniqueTag,
+        renotify: true
+      });
+    }).catch(() => {
+      try { new Notification(name, { body: message.text, icon: iconUrl, tag: uniqueTag }); } catch(e) {}
+    });
+  }
+}
+
+function onMsgKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!activeConvo) return;
+    sendMessage();
+  }
+}
+
+// ══ NOTIFICATIONS PERMISSION ════════════════════════════
+function updateNotifPermUI() {
+  const el = document.getElementById('notif-perm-val');
+  if (!el) return;
+  if (!('Notification' in window)) { el.textContent = 'Not supported'; return; }
+  const p = Notification.permission;
+  el.textContent = p === 'granted' ? 'Enabled ✓' : p === 'denied' ? 'Blocked' : 'Tap to enable';
+  el.style.color = p === 'granted' ? 'var(--green)' : p === 'denied' ? 'var(--red)' : 'var(--accent)';
+}
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) { toast('Notifications not supported in this browser.', 'w'); return; }
+  if (Notification.permission === 'granted') { toast('✅ Notifications already enabled!', 's'); return; }
+  if (Notification.permission === 'denied') { toast('Notifications are blocked. Enable them in your browser/OS settings.', 'w'); return; }
+  const p = await Notification.requestPermission();
+  updateNotifPermUI();
+  if (p === 'granted') toast('🔔 Notifications enabled!', 's');
+  else toast('Notifications blocked.', 'w');
+}
+
+// ══ PROFILE ══════════════════════════════════════════════
+function updateProfileUI() {
+  if (!myProfile) return;
+  const fav = document.getElementById('sb-footer-av');
+  if (myProfile.avatar) fav.innerHTML = `<img src="${myProfile.avatar}" alt=""/>`;
+  else fav.textContent = (myProfile.displayName || '?')[0];
+  document.getElementById('sb-footer-name').textContent = myProfile.displayName || '—';
+  document.getElementById('sb-footer-tag').textContent = '@' + (myProfile.username || '—');
+
+  const pav = document.getElementById('prof-av-big');
+  if (myProfile.avatar) pav.innerHTML = `<img src="${myProfile.avatar}" alt=""/><input type="file" id="av-file-input" accept="image/*" style="display:none" onchange="uploadAvatar(event)"/>`;
+  else pav.innerHTML = `${(myProfile.displayName || '?')[0]}<input type="file" id="av-file-input" accept="image/*" style="display:none" onchange="uploadAvatar(event)"/>`;
+  document.getElementById('prof-name-big').textContent = myProfile.displayName || '—';
+  document.getElementById('prof-tag').textContent = '@' + (myProfile.username || '—');
+  document.getElementById('dn-input').value = myProfile.displayName || '';
+
+  const icon = document.getElementById('tbn-profile-icon');
+  if (icon && myProfile.avatar) icon.innerHTML = `<img src="${myProfile.avatar}" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover"/>`;
+}
+
+function pickAvatar() { document.getElementById('av-file-input')?.click(); }
+function uploadAvatar(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > 3 * 1024 * 1024) { toast('Image too large (max 3MB)', 'e'); return; }
+  const r = new FileReader();
+  r.onload = () => {
+    const b64 = r.result;
+    socket.emit('update_profile', { avatar: b64 });
+    myProfile.avatar = b64; updateProfileUI(); toast('Profile picture updated!', 's');
+  };
+  r.readAsDataURL(file);
+}
+function updateDisplayName() {
+  const v = document.getElementById('dn-input').value.trim(); if (!v) return;
+  socket.emit('update_profile', { displayName: v });
+  myProfile.displayName = v; updateProfileUI(); toast('Display name updated!', 's');
+}
+
 // ══ PWA: MANIFEST + SERVICE WORKER ══════════════════════
 function setupPWA() {
-  // 1. Define appScope at the very beginning of the function
   const appScope = location.href.substring(0, location.href.lastIndexOf('/') + 1);
 
-  // 2. Build the manifest using appScope
   const manifest = {
     name: 'MyWeb Chat',
     short_name: 'MWH Chat',
@@ -2281,7 +2434,6 @@ function setupPWA() {
     lang: 'en'
   };
 
-  // 3. Inject manifest link tag
   const stringManifest = JSON.stringify(manifest);
   const blob = new Blob([stringManifest], { type: 'application/json' });
   const manifestUrl = URL.createObjectURL(blob);
@@ -2294,7 +2446,6 @@ function setupPWA() {
   }
   manifestLink.href = manifestUrl;
 
-  // 4. Register Service Worker with relative path
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('[PWA] Service Worker registered', reg.scope))
