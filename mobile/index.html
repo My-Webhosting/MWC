@@ -1156,57 +1156,58 @@ body {
 
 <script>
 // ══ PWA: MANIFEST + SERVICE WORKER ══════════════════════
-(function setupPWA() {
-  // SVG icon as data URI
-  
-  
+function setupPWA() {
+  // 1. Define appScope at the very beginning of the function
+  const appScope = location.href.substring(0, location.href.lastIndexOf('/') + 1);
 
-  // Inline manifest
- // Inline manifest
+  // 2. Build the manifest using appScope
   const manifest = {
     name: 'MyWeb Chat',
     short_name: 'MWH Chat',
     description: 'Fast, private messaging',
- start_url: appScope,
-  scope: appScope,
+    start_url: appScope,
+    scope: appScope,
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#0d0d0f',
     theme_color: '#0d0d0f',
-icons: [
-  { 
-    src: new URL('icon-192.png', location.href).href, 
-    sizes: '192x192', 
-    type: 'image/png', 
-    purpose: 'any maskable' 
-  },
-  { 
-    src: new URL('icon-512.png', location.href).href, 
-    sizes: '512x512', 
-    type: 'image/png', 
-    purpose: 'any maskable' 
-  }
-],
+    icons: [
+      { 
+        src: new URL('icon-192.png', appScope).href, 
+        sizes: '192x192', 
+        type: 'image/png', 
+        purpose: 'any maskable' 
+      },
+      { 
+        src: new URL('icon-512.png', appScope).href, 
+        sizes: '512x512', 
+        type: 'image/png', 
+        purpose: 'any maskable' 
+      }
+    ],
     categories: ['social', 'communication'],
     lang: 'en'
   };
-  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-  const manifestUrl = URL.createObjectURL(manifestBlob);
-  document.getElementById('pwa-manifest').href = manifestUrl;
 
-  // Apple touch icon
- // Apple touch icon
-document.getElementById('apple-touch-icon').href = new URL('icon-512.png', location.href).href;
+  // 3. Inject manifest link tag
+  const stringManifest = JSON.stringify(manifest);
+  const blob = new Blob([stringManifest], { type: 'application/json' });
+  const manifestUrl = URL.createObjectURL(blob);
+  
+  let manifestLink = document.querySelector('link[rel="manifest"]');
+  if (!manifestLink) {
+    manifestLink = document.createElement('link');
+    manifestLink.rel = 'manifest';
+    document.head.appendChild(manifestLink);
+  }
+  manifestLink.href = manifestUrl;
 
-// Service Worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js')
-    .then(reg => {
-      console.log('[PWA] Service Worker registered', reg.scope);
-      // Check for updates every 30s in the background
-      setInterval(() => reg.update(), 30000);
-    })
-    .catch(err => console.warn('[PWA] SW registration failed:', err));
+  // 4. Register Service Worker with relative path
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('[PWA] Service Worker registered', reg.scope))
+      .catch(err => console.warn('[PWA] SW registration failed:', err));
+  }
 }
 })(); // <--- Add this missing closing statement here!
     
